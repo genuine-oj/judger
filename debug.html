@@ -1,0 +1,49 @@
+<html>
+<head>
+    <title>OJ Judger Test Client</title>
+</head>
+<body>
+<form onsubmit="onSubmit(); return false;">
+    <input type="text" id="input">
+    <input id="submitBtn" type="submit" value="Send" disabled>
+    <button onclick="onCloseClick(); return false;">close</button>
+</form>
+<div id="log"></div>
+
+<script type="text/javascript">
+    let ws;
+
+    function init() {
+        ws = new WebSocket("ws://localhost:8080/");
+        ws.onopen = () => {
+            document.getElementById("submitBtn").disabled = false
+        }
+
+        ws.onmessage = function (e) {
+            console.log(JSON.parse(e.data))
+        }
+
+        ws.onclose = () => {
+            document.getElementById("submitBtn").disabled = true
+        }
+
+        ws.onerror = e => {
+            console.error(e)
+        }
+
+    }
+
+    const onSubmit = () => {
+        const input = document.getElementById("input")
+        ws.send(input.value)
+        console.log("--------------------")
+    }
+
+    const onCloseClick = () => {
+        ws.close()
+    }
+
+    init()
+</script>
+</body>
+</html>

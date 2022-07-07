@@ -1,79 +1,64 @@
-import socketserver
+from websocket_server import WebsocketServer
 import json
-import struct
-import signal
 from multiprocessing import Manager
-from threading import Thread, Event
+from threading import Thread
 
 from judger import Judger, JudgeResult
 from exceptions import JudgeServiceError
 
-quit_event = Event()
 
+class JudgeServer(object):
+    def __init__(self):
+        self.server = WebsocketServer(host='0.0.0.0', port=8080)
+        self.server.set_fn_new_client(self.new_client)
+        self.server.set_fn_client_left(self.client_left)
+        self.server.set_fn_message_received(self.task_received)
 
-def quit_server(signal, frame):
-    quit_event.set()
+    def start(self):
+        self.server.run_forever()
 
+    @staticmethod
+    def new_client(client, _server):
+        print("New client connected and was given id %d" % client['id'])
 
-class RequestHandler(socketserver.BaseRequestHandler):
-    def handle(self):
+    @staticmethod
+    def client_left(client, _server):
+        print("Client(%d) disconnected" % client['id'])
+
+    def task_received(self, client, _server, message):
         try:
-            pkt_size = struct.unpack('i', self.request.recv(4))[0]
-            if pkt_size <= 1024:
-                test_data_pkt = self.request.recv(pkt_size)
-            else:
-                test_data_pkt = b''
-                while len(test_data_pkt) < pkt_size:
-                    unfinished_len = pkt_size - len(test_data_pkt)
-                    if unfinished_len > 1024:
-                        data = self.request.recv(1024)
-                    else:
-                        data = self.request.recv(unfinished_len)
-                    test_data_pkt += data
-            test_data = json.loads(test_data_pkt.decode('utf-8'))
-            result_queue = Manager().Queue()
-            Thread(target=self.feedback, args=(result_queue,)).start()
-            try:
-                Judger(task_id=test_data['task_id'],
-                       case_id=test_data['case_id'],
-                       case_conf=test_data['case_config'],
-                       result_queue=result_queue
-                       ).judge(test_data['code'],
-                               test_data['lang'],
-                               test_data['limit'])
-            except JudgeServiceError:
-                result_queue.put(Judger.make_report(
-                    status=JudgeResult.SYSTEM_ERROR,
-                    score=0,
-                    max_time=0,
-                    max_memory=0,
-                    log='Judge Server Error',
-                    detail=[]
-                ))
-        except ConnectionResetError:
-            pass
+            task = json.loads(message)
+        except json.decoder.JSONDecodeError:
+            return
+        result_queue = Manager().Queue()
+        Thread(target=self.feedback, args=(client, result_queue)).start()
+        try:
+            Judger(task_id=task['task_id'],
+                   case_id=task['case_id'],
+                   case_conf=task['case_config'],
+                   result_queue=result_queue
+                   ).judge(task['code'],
+                           task['lang'],
+                           task['limit'])
+        except JudgeServiceError as e:
+            result_queue.put(Judger.make_report(
+                status=JudgeResult.SYSTEM_ERROR,
+                score=0,
+                max_time=0,
+                max_memory=0,
+                log=str(e),
+                detail=[]
+            ))
+        result_queue.put(None)
 
-    def feedback(self, queue):
-        item = queue.get()
-        data = json.dumps(item).encode('utf-8')
-        self.send_chuck(data)
-        self.request.recv(1)  # ack
-
-    def send_chuck(self, data):
-        head_pkt = struct.pack('i', len(data))
-        self.request.sendall(head_pkt)
-        self.request.sendall(data)
+    def feedback(self, client, queue):
+        while True:
+            item = queue.get()
+            if item is None:
+                break
+            data = json.dumps(item)
+            self.server.send_message(client, data)
 
 
-if __name__ == "__main__":
-    HOST, PORT = '0.0.0.0', 18082
-    server = socketserver.ThreadingTCPServer((HOST, PORT), RequestHandler)
-    print(f'OJ Judger started on {HOST}:{PORT}, press Ctrl-C to exit.')
-    signal.signal(signal.SIGINT, quit_server)
-    signal.signal(signal.SIGTERM, quit_server)
-    thread = Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    quit_event.wait()
-    print('Exiting...')
-    server.shutdown()
-    server.server_close()
+server = JudgeServer()
+server.start()

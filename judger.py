@@ -73,6 +73,10 @@ class Judger(object):
                     detail=[]
                 ))
                 return
+            self.result_queue.put({
+                'type': 'compile',
+                'data': str(compile_log)
+            })
             jobs = []
             for case in self.test_case_conf:
                 result = self.pool.apply_async(_run, (
@@ -80,8 +84,8 @@ class Judger(object):
                     working_dir,
                     case['name'],
                     config,
-                    limit_config
-                ))
+                    limit_config,
+                ), callback=self.real_time_status)
                 jobs.append((result, case['score']))
             self.pool.close()
             self.pool.join()
@@ -177,6 +181,7 @@ class Judger(object):
     @staticmethod
     def make_report(status, score, max_time, max_memory, log, detail):
         return {
+            'type': 'final',
             'status': int(status),
             'score': int(score),
             'statistics': {
@@ -186,6 +191,13 @@ class Judger(object):
             'log': str(log),
             'detail': list(detail)
         }
+
+    def real_time_status(self, detail):
+        self.result_queue.put({
+            'type': 'part',
+            'test_case': detail['test_case'],
+            'status': detail['status']
+        })
 
     def __getstate__(self):
         self_dict = self.__dict__.copy()

@@ -1,0 +1,62 @@
+{
+  "task_id": "XX",
+  "case_id": "b6d4ceca-f60f-11ec-883f-60e32bd42985",
+  "case_config": [
+    {
+      "id": "test1",
+      "name": "test1",
+      "score": 10
+    },
+    {
+      "id": "test2",
+      "name": "test2",
+      "score": 10
+    },
+    {
+      "id": "test3",
+      "name": "test3",
+      "score": 10
+    },
+    {
+      "id": "test4",
+      "name": "test4",
+      "score": 10
+    },
+    {
+      "id": "test5",
+      "name": "test5",
+      "score": 10
+    },
+    {
+      "id": "test6",
+      "name": "test6",
+      "score": 10
+    },
+    {
+      "id": "test7",
+      "name": "test7",
+      "score": 10
+    },
+    {
+      "id": "test8",
+      "name": "test8",
+      "score": 10
+    },
+    {
+      "id": "test9",
+      "name": "test9",
+      "score": 10
+    },
+    {
+      "id": "test10",
+      "name": "test10",
+      "score": 10
+    }
+  ],
+  "lang": "c",
+  "code": "#include<stdio.h>\n            int main() {\n                int a, b;\n                scanf(\"%d %d\", &a, &b);\n                printf(\"8135\\n\\n\\n\");\n                return 0;\n            }",
+  "limit": {
+    "max_cpu_time": 2000,
+    "max_memory": 134217728
+  }
+}
