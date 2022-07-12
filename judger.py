@@ -3,6 +3,8 @@ from pathlib import Path
 import hashlib
 import os
 import shutil
+import base64
+
 import _judger
 
 from compiler import Compiler
@@ -105,7 +107,6 @@ class Judger(object):
                 detail.append({
                     'case_name': result['test_case'],
                     'status': result['status'],
-                    'output': result['result'],
                     'statistics': {
                         'time': time,
                         'memory': memory,
@@ -139,14 +140,15 @@ class Judger(object):
                 return {
                     'test_case': case_name,
                     'status': JudgeResult.WRONG_ANSWER,
-                    'result': '',
+                    'output': '',
                     'statistic': run_result
                 }
             status, result = self.compare_output(case_name, out_file)
+            output = base64.b64encode(result.encode('utf-8'))
             return {
                 'test_case': case_name,
                 'status': status,
-                'result': result,
+                'output': str(output, 'utf-8'),
                 'statistic': run_result
             }
         if status in (_judger.RESULT_CPU_TIME_LIMIT_EXCEEDED, _judger.RESULT_REAL_TIME_LIMIT_EXCEEDED):
@@ -162,7 +164,7 @@ class Judger(object):
         return {
             'test_case': case_name,
             'status': status,
-            'result': '',
+            'output': '',
             'statistic': run_result
         }
 
@@ -196,6 +198,7 @@ class Judger(object):
         self.result_queue.put({
             'type': 'part',
             'test_case': detail['test_case'],
+            'output': detail['output'],
             'status': detail['status']
         })
 
