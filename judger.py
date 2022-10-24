@@ -65,7 +65,9 @@ class Judger(object):
         with MakeJudgeDir(self.task_id, debug=False) as working_dir:
             Path(working_dir / compile_config['src_name']).write_text(source_code, encoding='utf-8')
             compile_result, compile_log = Compiler.compile(working_dir, config['compile'])
-            if compile_result['result'] != _judger.RESULT_SUCCESS:
+            if compile_result['result'] != _judger.RESULT_SUCCESS \
+                and not Path(working_dir / compile_config['exe_name']).exists():
+                # TODO: Find out why flag 3 is returned.
                 self.result_queue.put(self.make_report(
                     status=JudgeResult.COMPILE_ERROR,
                     score=0,
