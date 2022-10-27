@@ -16,12 +16,18 @@ class JudgeResult(enum.IntEnum):
 CONFIG = {
     'c': {
         'compile': {
-            'src_name': 'main.c',
-            'exe_name': 'main',
-            'max_cpu_time': 3000,
-            'max_real_time': 5000,
-            'max_memory': 128 * 1024 * 1024,
-            'compile_command': '/usr/bin/gcc -DONLINE_JUDGE -O2 -W -fmax-errors=3 -std=c99 {src_path} -lm -o {exe_path}',
+            'src_name':
+            'main.c',
+            'exe_name':
+            'main',
+            'max_cpu_time':
+            3000,
+            'max_real_time':
+            5000,
+            'max_memory':
+            128 * 1024 * 1024,
+            'compile_command':
+            '/usr/bin/gcc -DONLINE_JUDGE -O2 -W -fmax-errors=3 -std=c99 {src_path} -lm -o {exe_path}',
         },
         'run': {
             'command': '{exe_path}',
@@ -31,17 +37,38 @@ CONFIG = {
     },
     'cpp': {
         'compile': {
-            'src_name': 'main.cpp',
-            'exe_name': 'main',
-            'max_cpu_time': 3000,
-            'max_real_time': 5000,
-            'max_memory': 128 * 1024 * 1024,
-            'compile_command': '/usr/bin/g++ -DONLINE_JUDGE -O2 -W -fmax-errors=3 -std=c++11 {src_path} -lm -o {exe_path}',
+            'src_name':
+            'main.cpp',
+            'exe_name':
+            'main',
+            'max_cpu_time':
+            3000,
+            'max_real_time':
+            5000,
+            'max_memory':
+            128 * 1024 * 1024,
+            'compile_command':
+            '/usr/bin/g++ -DONLINE_JUDGE -O2 -W -fmax-errors=3 -std=c++14 {src_path} -lm -o {exe_path}',
         },
         'run': {
             'command': '{exe_path}',
             'seccomp_rule': 'c_cpp',
             'env': DEFAULT_ENV
         }
+    },
+    'python': {
+        'compile': {
+            'src_name': 'solution.py',
+            'exe_name': '__pycache__/solution.cpython-3*.pyc',
+            'max_cpu_time': 3000,
+            'max_real_time': 5000,
+            'max_memory': 128 * 1024 * 1024,
+            'compile_command': '/usr/bin/python3 -m py_compile {src_path}',
+        },
+        'run': {
+            'command': '/usr/bin/python3 {exe_path}',
+            'seccomp_rule': 'general',
+            'env': ['PYTHONIOENCODING=UTF-8'] + DEFAULT_ENV,
+        },
     }
 }
