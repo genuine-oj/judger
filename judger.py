@@ -63,10 +63,12 @@ class Judger(object):
             raise JudgeServiceError('Language not supported!')
         compile_config = config['compile']
         with MakeJudgeDir(self.task_id, debug=False) as working_dir:
-            Path(working_dir / compile_config['src_name']).write_text(source_code, encoding='utf-8')
-            compile_result, compile_log = Compiler.compile(working_dir, config['compile'])
+            Path(working_dir / compile_config['src_name']) \
+                .write_text(source_code, encoding='utf-8')
+            compile_result, compile_log = Compiler.compile(
+                working_dir, config['compile'])
             if compile_result['result'] != _judger.RESULT_SUCCESS \
-                and not Path(working_dir / compile_config['exe_name']).exists():
+                    and not Path(working_dir / compile_config['exe_name']).exists():
                 # TODO: Find out why flag 3 is returned.
                 self.result_queue.put(self.make_report(
                     status=JudgeResult.COMPILE_ERROR,
@@ -117,7 +119,10 @@ class Judger(object):
                 })
                 max_time = max(max_time, time)
                 max_memory = max(max_memory, memory)
-            status = JudgeResult.ACCEPTED if len(error_status) == 0 else max(error_status)
+            if len(error_status) == 0:
+                status = JudgeResult.ACCEPTED
+            else:
+                status = max(error_status)
             self.result_queue.put(self.make_report(
                 status=status,
                 score=score,
@@ -131,7 +136,16 @@ class Judger(object):
         in_file = self.test_case / f'{case_name}.in'
         out_file = working_dir / f'{case_name}.out'
         if not in_file.exists():
-            return JudgeResult.SYSTEM_ERROR, 'Test input not found!'
+            return {
+                'test_case': case_name,
+                'status': JudgeResult.SYSTEM_ERROR,
+                'output': 'Test input not found!',
+                'statistic': {
+                    'cpu_time': 0,
+                    'memory': 0,
+                    'exit_code': 0
+                }
+            }
         shutil.copyfile(in_file, working_dir / f'{case_name}.in')
         run_result = Runner.run(working_dir, config['compile']['exe_name'],
                                 f'{case_name}.in', f'{case_name}.out',
@@ -172,7 +186,11 @@ class Judger(object):
 
     def compare_output(self, case_name, out_file: Path):
         content = out_file.read_bytes()
-        cleaned_content = b'\n'.join(map(bytes.rstrip, content.rstrip().splitlines()))
+        cleaned_content = b'\n' \
+            .join(map(
+                bytes.rstrip,
+                content.rstrip().splitlines()
+            ))
         content_md5 = hashlib.md5(cleaned_content).hexdigest()
         ans_md5_file = self.test_case / f'{case_name}.md5'
         if not ans_md5_file.exists():

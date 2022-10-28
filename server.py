@@ -1,64 +1,64 @@
-from websocket_server import WebsocketServer
+import asyncio
+import websockets
 import json
+
 from multiprocessing import Manager
-from threading import Thread
 
 from judger import Judger, JudgeResult
 from exceptions import JudgeServiceError
 
 
-class JudgeServer(object):
-    def __init__(self):
-        self.server = WebsocketServer(host='0.0.0.0', port=8080)
-        self.server.set_fn_new_client(self.new_client)
-        self.server.set_fn_client_left(self.client_left)
-        self.server.set_fn_message_received(self.task_received)
+def judge(task, result_queue):
+    try:
+        Judger(
+            task_id=task['task_id'],
+            case_id=task['case_id'],
+            case_conf=task['case_config'],
+            result_queue=result_queue
+        ).judge(
+            task['code'],
+            task['lang'],
+            task['limit']
+        )
+    except JudgeServiceError as e:
+        result_queue.put(Judger.make_report(
+            status=JudgeResult.SYSTEM_ERROR,
+            score=0,
+            max_time=0,
+            max_memory=0,
+            log=str(e),
+            detail=[]
+        ))
+    result_queue.put(None)
 
-    def start(self):
-        self.server.run_forever()
 
-    @staticmethod
-    def new_client(client, _server):
-        print("New client connected and was given id %d" % client['id'])
-
-    @staticmethod
-    def client_left(client, _server):
-        print("Client(%d) disconnected" % client['id'])
-
-    def task_received(self, client, _server, message):
+async def handler(websocket):
+    while True:
+        try:
+            message = await websocket.recv()
+        except (websockets.ConnectionClosedOK, websockets.exceptions.ConnectionClosedError):
+            break
         try:
             task = json.loads(message)
         except json.decoder.JSONDecodeError:
-            return
+            print(f'Decode failed: {message}')
+            continue
         result_queue = Manager().Queue()
-        Thread(target=self.feedback, args=(client, result_queue)).start()
-        try:
-            Judger(task_id=task['task_id'],
-                   case_id=task['case_id'],
-                   case_conf=task['case_config'],
-                   result_queue=result_queue
-                   ).judge(task['code'],
-                           task['lang'],
-                           task['limit'])
-        except JudgeServiceError as e:
-            result_queue.put(Judger.make_report(
-                status=JudgeResult.SYSTEM_ERROR,
-                score=0,
-                max_time=0,
-                max_memory=0,
-                log=str(e),
-                detail=[]
-            ))
-        result_queue.put(None)
-
-    def feedback(self, client, queue):
+        loop = asyncio.get_event_loop()
+        judger = loop.run_in_executor(
+            None, judge, task, result_queue)
         while True:
-            item = queue.get()
+            item = await loop.run_in_executor(None, result_queue.get)
             if item is None:
                 break
             data = json.dumps(item)
-            self.server.send_message(client, data)
+            await websocket.send(data)
 
 
-server = JudgeServer()
-server.start()
+async def main():
+    async with websockets.serve(handler, "", 8080):
+        await asyncio.Future()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

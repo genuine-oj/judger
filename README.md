@@ -1,5 +1,8 @@
 # Judger
 
+### Requirement | 要求
+Python >= 3.8
+
 ### Usage | 使用
 
 ```bash
