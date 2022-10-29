@@ -15,6 +15,7 @@ from exceptions import JudgeServiceError
 
 
 class MakeJudgeDir(object):
+
     def __init__(self, task_id, debug=False):
         self.work_dir = BASE_DIR / task_id
         self.debug = debug
@@ -31,7 +32,8 @@ class MakeJudgeDir(object):
         if self.debug:
             return
         try:
-            shutil.rmtree(self.work_dir)
+            # shutil.rmtree(self.work_dir)
+            ...
         except Exception:
             raise JudgeServiceError('Failed to clean runtime dir')
 
@@ -70,14 +72,15 @@ class Judger(object):
             if compile_result['result'] != _judger.RESULT_SUCCESS \
                     and not Path(working_dir / compile_config['exe_name']).exists():
                 # TODO: Find out why flag 3 is returned.
-                self.result_queue.put(self.make_report(
-                    status=JudgeResult.COMPILE_ERROR,
-                    score=0,
-                    max_time=compile_result['real_time'],
-                    max_memory=compile_result['memory'],
-                    log=compile_log,
-                    detail=[]
-                ))
+                self.result_queue.put(
+                    self.make_report(
+                        status=JudgeResult.COMPILE_ERROR,
+                        score=0,
+                        max_time=compile_result['real_time'],
+                        max_memory=compile_result['memory'],
+                        log=compile_log,
+                        detail=[],
+                    ))
                 return
             self.result_queue.put({
                 'type': 'compile',
@@ -85,13 +88,17 @@ class Judger(object):
             })
             jobs = []
             for case in self.test_case_conf:
-                result = self.pool.apply_async(_run, (
-                    self,
-                    working_dir,
-                    case['name'],
-                    config,
-                    limit_config,
-                ), callback=self.real_time_status)
+                result = self.pool.apply_async(
+                    _run,
+                    (
+                        self,
+                        working_dir,
+                        case['name'],
+                        config,
+                        limit_config,
+                    ),
+                    callback=self.real_time_status,
+                )
                 jobs.append((result, case['score']))
             self.pool.close()
             self.pool.join()
@@ -123,14 +130,15 @@ class Judger(object):
                 status = JudgeResult.ACCEPTED
             else:
                 status = max(error_status)
-            self.result_queue.put(self.make_report(
-                status=status,
-                score=score,
-                max_time=max_time,
-                max_memory=max_memory,
-                log=compile_log,
-                detail=detail
-            ))
+            self.result_queue.put(
+                self.make_report(
+                    status=status,
+                    score=score,
+                    max_time=max_time,
+                    max_memory=max_memory,
+                    log=compile_log,
+                    detail=detail,
+                ))
 
     def judge_single(self, working_dir, case_name, config, limit_config):
         in_file = self.test_case / f'{case_name}.in'
@@ -167,7 +175,8 @@ class Judger(object):
                 'output': str(output, 'utf-8'),
                 'statistic': run_result
             }
-        if status in (_judger.RESULT_CPU_TIME_LIMIT_EXCEEDED, _judger.RESULT_REAL_TIME_LIMIT_EXCEEDED):
+        if status in (_judger.RESULT_CPU_TIME_LIMIT_EXCEEDED,
+                      _judger.RESULT_REAL_TIME_LIMIT_EXCEEDED):
             status = JudgeResult.TIME_LIMIT_EXCEEDED
             if status != _judger.RESULT_CPU_TIME_LIMIT_EXCEEDED:
                 run_result['cpu_time'] = run_result['real_time']
@@ -177,10 +186,13 @@ class Judger(object):
             status = JudgeResult.RUNTIME_ERROR
         else:
             status = JudgeResult.SYSTEM_ERROR
+        output = ''
+        if out_file.exists():
+            output = out_file.read_bytes()
         return {
             'test_case': case_name,
             'status': status,
-            'output': '',
+            'output': str(base64.b64encode(output), 'utf-8'),
             'statistic': run_result
         }
 
@@ -198,7 +210,8 @@ class Judger(object):
         ans_md5 = ans_md5_file.read_text(encoding='utf-8', errors='ERROR')
         if content_md5 == ans_md5:
             return JudgeResult.ACCEPTED, ''
-        return JudgeResult.WRONG_ANSWER, content.decode(encoding='utf-8', errors='Failed to decode output!')
+        return JudgeResult.WRONG_ANSWER, content.decode(
+            encoding='utf-8', errors='Failed to decode output!')
 
     @staticmethod
     def make_report(status, score, max_time, max_memory, log, detail):
@@ -226,6 +239,7 @@ class Judger(object):
         self_dict = self.__dict__.copy()
         del self_dict['pool']
         return self_dict
+
 
 #
 # if __name__ == '__main__':

@@ -56,10 +56,10 @@ CONFIG = {
             'env': DEFAULT_ENV
         }
     },
-    'python': {
+    'python38': {
         'compile': {
             'src_name': 'solution.py',
-            'exe_name': '__pycache__/solution.cpython-3*.pyc',
+            'exe_name': '__pycache__/solution.cpython-38.pyc',
             'max_cpu_time': 3000,
             'max_real_time': 5000,
             'max_memory': 128 * 1024 * 1024,
