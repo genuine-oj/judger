@@ -13,7 +13,8 @@ def judge(task, result_queue):
         Judger(
             task_id=task['task_id'],
             case_id=task['case_id'],
-            case_conf=task['case_config'],
+            test_case_config=task['test_case_config'],
+            subcheck_config=task['subcheck_config'],
             result_queue=result_queue
         ).judge(
             task['code'],

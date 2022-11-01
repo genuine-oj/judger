@@ -1,17 +1,17 @@
-from multiprocessing import Pool
-from pathlib import Path
+import base64
 import hashlib
 import os
 import shutil
-import base64
+from multiprocessing import Pool
+from pathlib import Path
 
 import _judger
 
 from compiler import Compiler
-from runner import Runner
-from languages import CONFIG, JudgeResult
-from config import BASE_DIR, TEST_CASE_DIR, PARALLEL_TESTS
+from config import BASE_DIR, PARALLEL_TESTS, TEST_CASE_DIR
 from exceptions import JudgeServiceError
+from languages import CONFIG, JudgeResult
+from runner import Runner
 
 
 class MakeJudgeDir(object):
@@ -50,12 +50,14 @@ class Judger(object):
         ]
     """
 
-    def __init__(self, task_id, case_id, case_conf, result_queue):
+    def __init__(self, task_id, case_id, test_case_config, subcheck_config,
+                 result_queue):
         self.task_id = task_id
         self.test_case = TEST_CASE_DIR / case_id
         if not self.test_case.exists():
             raise JudgeServiceError('Test data not found!')
-        self.test_case_conf = case_conf
+        self.test_case_config = test_case_config
+        self.subcheck_config = subcheck_config
         self.pool = Pool(processes=PARALLEL_TESTS)
         self.result_queue = result_queue
 
@@ -87,7 +89,7 @@ class Judger(object):
                 'data': str(compile_log)
             })
             jobs = []
-            for case in self.test_case_conf:
+            for case in self.test_case_config:
                 result = self.pool.apply_async(
                     _run,
                     (
@@ -99,7 +101,8 @@ class Judger(object):
                     ),
                     callback=self.real_time_status,
                 )
-                jobs.append((result, case['score']))
+                print(case)
+                jobs.append((result, case['score'], case.get('subcheck')))
             self.pool.close()
             self.pool.join()
             error_status = []
@@ -107,11 +110,17 @@ class Judger(object):
             detail = []
             max_time = 0
             max_memory = 0
+            subchecks = {}
+            for i, j in self.subcheck_config.items():
+                subchecks[i] = j['score']
             for job in jobs:
                 result = job[0].get()
+                subcheck = str(job[2])
                 if result['status'] == JudgeResult.ACCEPTED:
                     score += job[1]
                 else:
+                    if subcheck:
+                        subchecks[subcheck] = 0
                     error_status.append(result['status'])
                 time = result['statistic']['cpu_time']
                 memory = result['statistic']['memory']
@@ -130,6 +139,8 @@ class Judger(object):
                 status = JudgeResult.ACCEPTED
             else:
                 status = max(error_status)
+            if subchecks:
+                score = sum(i for i in subchecks.values())
             self.result_queue.put(
                 self.make_report(
                     status=status,
@@ -232,37 +243,10 @@ class Judger(object):
             'type': 'part',
             'test_case': detail['test_case'],
             'output': detail['output'],
-            'status': detail['status']
+            'status': detail['status'],
         })
 
     def __getstate__(self):
         self_dict = self.__dict__.copy()
         del self_dict['pool']
         return self_dict
-
-
-#
-# if __name__ == '__main__':
-#     a = Judger('XX', 'abc-abc', [
-#         {'id': 'test1', 'name': 'test1', 'score': 10},
-#         {'id': 'test2', 'name': 'test2', 'score': 10},
-#         {'id': 'test3', 'name': 'test3', 'score': 10},
-#         {'id': 'test4', 'name': 'test4', 'score': 10},
-#         {'id': 'test5', 'name': 'test5', 'score': 10},
-#         {'id': 'test6', 'name': 'test6', 'score': 10},
-#         {'id': 'test7', 'name': 'test7', 'score': 10},
-#         {'id': 'test8', 'name': 'test8', 'score': 10},
-#         {'id': 'test9', 'name': 'test9', 'score': 10},
-#         {'id': 'test10', 'name': 'test10', 'score': 10}
-#     ])
-#     code = """
-#     #include<stdio.h>
-#     int main() {
-#         int a, b;
-#         scanf("%d %d", &a, &b);
-#         printf("%d", a+b);
-#         return 0;
-#     }
-#     """
-#     limit = {"max_cpu_time": 2000, "max_memory": 128 * 1024 * 1024}
-#     a.judge(code, 'c', limit)
