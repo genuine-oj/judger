@@ -117,7 +117,8 @@ class Judger(object):
                 result = job[0].get()
                 subcheck = str(job[2])
                 if result['status'] == JudgeResult.ACCEPTED:
-                    score += job[1]
+                    if not use_subcheck:
+                        score += job[1]
                 else:
                     if use_subcheck:
                         subchecks[subcheck] = 0
