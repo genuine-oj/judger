@@ -101,7 +101,6 @@ class Judger(object):
                     ),
                     callback=self.real_time_status,
                 )
-                print(case)
                 jobs.append((result, case['score'], case.get('subcheck')))
             self.pool.close()
             self.pool.join()
@@ -110,6 +109,7 @@ class Judger(object):
             detail = []
             max_time = 0
             max_memory = 0
+            use_subcheck = bool(self.test_case_config[0].get('use_subcheck'))
             subchecks = {}
             for i, j in self.subcheck_config.items():
                 subchecks[i] = j['score']
@@ -119,7 +119,7 @@ class Judger(object):
                 if result['status'] == JudgeResult.ACCEPTED:
                     score += job[1]
                 else:
-                    if subcheck:
+                    if use_subcheck:
                         subchecks[subcheck] = 0
                     error_status.append(result['status'])
                 time = result['statistic']['cpu_time']
@@ -131,15 +131,17 @@ class Judger(object):
                         'time': time,
                         'memory': memory,
                         'exit_code': result['statistic']['exit_code']
-                    }
+                    },
                 })
+                if use_subcheck:
+                    detail[-1]['subcheck'] = subcheck
                 max_time = max(max_time, time)
                 max_memory = max(max_memory, memory)
             if len(error_status) == 0:
                 status = JudgeResult.ACCEPTED
             else:
                 status = max(error_status)
-            if subchecks:
+            if use_subcheck:
                 score = sum(i for i in subchecks.values())
             self.result_queue.put(
                 self.make_report(
