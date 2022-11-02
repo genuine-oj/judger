@@ -32,8 +32,7 @@ class MakeJudgeDir(object):
         if self.debug:
             return
         try:
-            # shutil.rmtree(self.work_dir)
-            ...
+            shutil.rmtree(self.work_dir)
         except Exception:
             raise JudgeServiceError('Failed to clean runtime dir')
 
@@ -66,7 +65,7 @@ class Judger(object):
         if config is None:
             raise JudgeServiceError('Language not supported!')
         compile_config = config['compile']
-        with MakeJudgeDir(self.task_id, debug=False) as working_dir:
+        with MakeJudgeDir(self.task_id, debug=True) as working_dir:
             Path(working_dir / compile_config['src_name']) \
                 .write_text(source_code, encoding='utf-8')
             compile_result, compile_log = Compiler.compile(
@@ -109,13 +108,13 @@ class Judger(object):
             detail = []
             max_time = 0
             max_memory = 0
-            use_subcheck = bool(self.test_case_config[0].get('use_subcheck'))
+            use_subcheck = self.test_case_config[0].get('subcheck') is not None
             subchecks = {}
             for i, j in self.subcheck_config.items():
-                subchecks[i] = j['score']
+                subchecks[int(i)] = j['score']
             for job in jobs:
                 result = job[0].get()
-                subcheck = str(job[2])
+                subcheck = job[2]
                 if result['status'] == JudgeResult.ACCEPTED:
                     if not use_subcheck:
                         score += job[1]
@@ -142,6 +141,7 @@ class Judger(object):
                 status = JudgeResult.ACCEPTED
             else:
                 status = max(error_status)
+            print(subchecks)
             if use_subcheck:
                 score = sum(i for i in subchecks.values())
             self.result_queue.put(
