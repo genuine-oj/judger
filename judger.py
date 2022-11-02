@@ -141,7 +141,6 @@ class Judger(object):
                 status = JudgeResult.ACCEPTED
             else:
                 status = max(error_status)
-            print(subchecks)
             if use_subcheck:
                 score = sum(i for i in subchecks.values())
             self.result_queue.put(
