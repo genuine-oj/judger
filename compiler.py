@@ -10,7 +10,9 @@ from config import COMPILER_USER_UID, COMPILER_GROUP_GID
 class Compiler(object):
     @staticmethod
     def compile(working_path: Path, compile_config):
-        command = compile_config['compile_command']
+        command = compile_config.get('compile_command')
+        if command is None:
+            return 0, ''
         src_path = working_path / compile_config['src_name']
         exe_path = working_path / compile_config['exe_name']
         command = command.format(src_path=src_path, exe_path=exe_path)

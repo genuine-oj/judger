@@ -69,7 +69,7 @@ class Judger(object):
             Path(working_dir / compile_config['src_name']) \
                 .write_text(source_code, encoding='utf-8')
             compile_result, compile_log = Compiler.compile(
-                working_dir, config['compile'])
+                working_dir, compile_config)
             if compile_result['result'] != _judger.RESULT_SUCCESS \
                     and not Path(working_dir / compile_config['exe_name']).exists():
                 # TODO: Find out why flag 3 is returned.
