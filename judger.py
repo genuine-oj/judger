@@ -108,18 +108,15 @@ class Judger(object):
             detail = []
             max_time = 0
             max_memory = 0
-            use_subcheck = self.test_case_config[0].get('subcheck') is not None
-            subchecks = {}
-            for i, j in self.subcheck_config.items():
-                subchecks[int(i)] = j['score']
+            subchecks = self.subcheck_config
             for job in jobs:
                 result = job[0].get()
                 subcheck = job[2]
                 if result['status'] == JudgeResult.ACCEPTED:
-                    if not use_subcheck:
+                    if not subchecks:
                         score += job[1]
                 else:
-                    if use_subcheck:
+                    if subchecks:
                         subchecks[subcheck] = 0
                     error_status.append(result['status'])
                 time = result['statistic']['cpu_time']
@@ -132,16 +129,15 @@ class Judger(object):
                         'memory': memory,
                         'exit_code': result['statistic']['exit_code']
                     },
+                    'subcheck': subcheck,
                 })
-                if use_subcheck:
-                    detail[-1]['subcheck'] = subcheck
                 max_time = max(max_time, time)
                 max_memory = max(max_memory, memory)
             if len(error_status) == 0:
                 status = JudgeResult.ACCEPTED
             else:
                 status = max(error_status)
-            if use_subcheck:
+            if subchecks:
                 score = sum(i for i in subchecks.values())
             self.result_queue.put(
                 self.make_report(
