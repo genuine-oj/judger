@@ -1,4 +1,4 @@
-import _judger
+import judgercore
 import json
 from pathlib import Path
 import os
@@ -23,12 +23,12 @@ class Compiler(object):
         os.chdir(working_path)
         env = compile_config.get('env', [])
         env.append('PATH=' + os.getenv('PATH'))
-        result = _judger.run(max_cpu_time=compile_config['max_cpu_time'],
+        result = judgercore.run(max_cpu_time=compile_config['max_cpu_time'],
                              max_real_time=compile_config['max_real_time'],
                              max_memory=compile_config['max_memory'],
                              max_stack=128 * 1024 * 1024,
                              max_output_size=20 * 1024 * 1024,
-                             max_process_number=_judger.UNLIMITED,
+                             max_process_number=judgercore.UNLIMITED,
                              exe_path=_command[0],
                              # /dev/null is best, but in some system, this will call ioctl system call
                              input_path=str(src_path),

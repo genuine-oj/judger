@@ -1,7 +1,7 @@
 import os
 import shlex
 
-import _judger
+import judgercore
 
 from config import RUN_USER_UID, RUN_GROUP_GID
 
@@ -17,12 +17,12 @@ class Runner(object):
         os.chown(working_path, RUN_USER_UID, RUN_GROUP_GID)
         env = ['PATH=' + os.environ.get('PATH', '')] + run_config.get('env', [])
         seccomp_rule = run_config['seccomp_rule']
-        run_result = _judger.run(max_cpu_time=limit_config['max_cpu_time'],
+        run_result = judgercore.run(max_cpu_time=limit_config['max_cpu_time'],
                                  max_real_time=limit_config['max_cpu_time'] * 3,
                                  max_memory=limit_config['max_memory'],
                                  max_stack=128 * 1024 * 1024,
                                  max_output_size=32 * 1024 * 1024,
-                                 max_process_number=_judger.UNLIMITED,
+                                 max_process_number=judgercore.UNLIMITED,
                                  exe_path=command[0],
                                  input_path=str(runner_in),
                                  output_path=str(runner_out),

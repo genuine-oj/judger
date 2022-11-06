@@ -5,7 +5,7 @@ import shutil
 from multiprocessing import Pool
 from pathlib import Path
 
-import _judger
+import judgercore
 
 from compiler import Compiler
 from config import BASE_DIR, PARALLEL_TESTS, TEST_CASE_DIR
@@ -70,7 +70,7 @@ class Judger(object):
                 .write_text(source_code, encoding='utf-8')
             compile_result, compile_log = Compiler.compile(
                 working_dir, compile_config)
-            if compile_result['result'] != _judger.RESULT_SUCCESS \
+            if compile_result['result'] != judgercore.RESULT_SUCCESS \
                     and not Path(working_dir / compile_config['exe_name']).exists():
                 # TODO: Find out why flag 3 is returned.
                 self.result_queue.put(
@@ -168,7 +168,7 @@ class Judger(object):
                                 f'{case_name}.in', f'{case_name}.out',
                                 config['run'], limit_config)
         status = run_result.pop('result')
-        if status == _judger.RESULT_SUCCESS:
+        if status == judgercore.RESULT_SUCCESS:
             if not out_file.exists():
                 return {
                     'test_case': case_name,
@@ -184,14 +184,14 @@ class Judger(object):
                 'output': str(output, 'utf-8'),
                 'statistic': run_result
             }
-        if status in (_judger.RESULT_CPU_TIME_LIMIT_EXCEEDED,
-                      _judger.RESULT_REAL_TIME_LIMIT_EXCEEDED):
+        if status in (judgercore.RESULT_CPU_TIME_LIMIT_EXCEEDED,
+                      judgercore.RESULT_REAL_TIME_LIMIT_EXCEEDED):
             status = JudgeResult.TIME_LIMIT_EXCEEDED
-            if status != _judger.RESULT_CPU_TIME_LIMIT_EXCEEDED:
+            if status != judgercore.RESULT_CPU_TIME_LIMIT_EXCEEDED:
                 run_result['cpu_time'] = run_result['real_time']
-        elif status == _judger.RESULT_MEMORY_LIMIT_EXCEEDED:
+        elif status == judgercore.RESULT_MEMORY_LIMIT_EXCEEDED:
             status = JudgeResult.MEMORY_LIMIT_EXCEEDED
-        elif status == _judger.RESULT_RUNTIME_ERROR:
+        elif status == judgercore.RESULT_RUNTIME_ERROR:
             status = JudgeResult.RUNTIME_ERROR
         else:
             status = JudgeResult.SYSTEM_ERROR
