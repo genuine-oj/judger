@@ -6,7 +6,6 @@ from multiprocessing import Pool
 from pathlib import Path
 
 import judgercore
-
 from compiler import Compiler
 from config import BASE_DIR, PARALLEL_TESTS, TEST_CASE_DIR
 from exceptions import JudgeServiceError
