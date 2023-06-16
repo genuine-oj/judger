@@ -1,5 +1,6 @@
 import asyncio
 import websockets
+import signal
 import json
 
 from multiprocessing import Manager
@@ -34,11 +35,7 @@ def judge(task, result_queue):
 
 
 async def handler(websocket):
-    while True:
-        try:
-            message = await websocket.recv()
-        except (websockets.ConnectionClosedOK, websockets.exceptions.ConnectionClosedError):
-            break
+    async for message in websocket:
         try:
             task = json.loads(message)
         except json.decoder.JSONDecodeError:
@@ -57,9 +54,14 @@ async def handler(websocket):
 
 
 async def main():
-    async with websockets.serve(handler, "", 8080):
-        await asyncio.Future()
+    loop = asyncio.get_running_loop()
+    stop = loop.create_future()
+    loop.add_signal_handler(signal.SIGTERM, stop.set_result, None)
 
+    print("Listening on :8080")
+    async with websockets.serve(handler, "", 8080):
+        await stop
+        print("SIGTERM received, exiting...")
 
 if __name__ == "__main__":
     asyncio.run(main())
