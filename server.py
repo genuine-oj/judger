@@ -1,5 +1,6 @@
 import asyncio
 import websockets
+import signal
 import json
 
 from multiprocessing import Manager
@@ -57,9 +58,12 @@ async def handler(websocket):
 
 
 async def main():
-    async with websockets.serve(handler, "", 8080):
-        await asyncio.Future()
+    loop = asyncio.get_running_loop()
+    stop = loop.create_future()
+    loop.add_signal_handler(signal.SIGTERM, stop.set_result, None)
 
+    async with websockets.serve(handler, "", 8080):
+        await stop
 
 if __name__ == "__main__":
     asyncio.run(main())
