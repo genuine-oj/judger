@@ -35,11 +35,7 @@ def judge(task, result_queue):
 
 
 async def handler(websocket):
-    while True:
-        try:
-            message = await websocket.recv()
-        except (websockets.ConnectionClosedOK, websockets.exceptions.ConnectionClosedError):
-            break
+    async for message in websocket:
         try:
             task = json.loads(message)
         except json.decoder.JSONDecodeError:
