@@ -31,7 +31,7 @@ CONFIG = {
         },
         'run': {
             'command': '{exe_path}',
-            'seccomp_rule': 'c_cpp',
+            'seccomp_rule': 'general',  # Should use c_cpp
             'env': DEFAULT_ENV
         }
     },
@@ -52,18 +52,24 @@ CONFIG = {
         },
         'run': {
             'command': '{exe_path}',
-            'seccomp_rule': 'c_cpp',
+            'seccomp_rule': 'general',  # Should use c_cpp
             'env': DEFAULT_ENV
         }
     },
     'python3': {
         'compile': {
-            'src_name': 'solution.py',
-            'exe_name': 'solution.pyc',
-            'max_cpu_time': 3000,
-            'max_real_time': 5000,
-            'max_memory': 128 * 1024 * 1024,
-            'compile_command': '/usr/bin/python3 -m compileall -l -f -b -q {src_path}',
+            'src_name':
+            'solution.py',
+            'exe_name':
+            'solution.pyc',
+            'max_cpu_time':
+            3000,
+            'max_real_time':
+            5000,
+            'max_memory':
+            128 * 1024 * 1024,
+            'compile_command':
+            '/usr/bin/python3 -m compileall -l -f -b -q {src_path}',
         },
         'run': {
             'command': '/usr/bin/python3 {exe_path}',
