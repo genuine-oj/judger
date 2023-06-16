@@ -116,7 +116,7 @@ class Judger(object):
                         score += job[1]
                 else:
                     if subchecks:
-                        subchecks[subcheck] = 0
+                        subchecks[subcheck]['score'] = 0
                     error_status.append(result['status'])
                 time = result['statistic']['cpu_time']
                 memory = result['statistic']['memory']
@@ -137,7 +137,7 @@ class Judger(object):
             else:
                 status = max(error_status)
             if subchecks:
-                score = sum(i for i in subchecks.values())
+                score = sum(i['score'] for i in subchecks)
             self.result_queue.put(
                 self.make_report(
                     status=status,
