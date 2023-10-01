@@ -7,7 +7,7 @@ from pathlib import Path
 
 import judgercore
 from compiler import Compiler
-from config import BASE_DIR, PARALLEL_TESTS, TEST_CASE_DIR
+from config import BASE_DIR, DEBUG, PARALLEL_TESTS, TEST_CASE_DIR, SPJ_DIR
 from exceptions import JudgeServiceError
 from languages import CONFIG, JudgeResult
 from runner import Runner
@@ -48,12 +48,15 @@ class Judger(object):
         ]
     """
 
-    def __init__(self, task_id, case_id, test_case_config, subcheck_config,
-                 result_queue):
+    def __init__(self, task_id, case_id, spj_id, test_case_config,
+                 subcheck_config, result_queue):
         self.task_id = task_id
         self.test_case = TEST_CASE_DIR / case_id
         if not self.test_case.exists():
             raise JudgeServiceError('Test data not found!')
+        self.spj_id = spj_id
+        if spj_id:
+            self.spj_dir = SPJ_DIR / spj_id
         self.test_case_config = test_case_config
         self.subcheck_config = subcheck_config
         self.pool = Pool(processes=PARALLEL_TESTS)
@@ -64,7 +67,8 @@ class Judger(object):
         if config is None:
             raise JudgeServiceError('Language not supported!')
         compile_config = config['compile']
-        with MakeJudgeDir(self.task_id, debug=True) as working_dir:
+        with MakeJudgeDir(self.task_id, debug=DEBUG) as working_dir:
+            # Compile user code
             Path(working_dir / compile_config['src_name']) \
                 .write_text(source_code, encoding='utf-8')
             compile_result, compile_log = Compiler.compile(
@@ -84,8 +88,49 @@ class Judger(object):
                 return
             self.result_queue.put({
                 'type': 'compile',
-                'data': str(compile_log)
+                'data': str(compile_log),
             })
+            # Compile SPJ
+            if self.spj_id:
+                checker = SPJ_DIR / self.spj_id / 'checker.cpp'
+                if not checker.exists():
+                    self.result_queue.put(
+                        self.make_report(
+                            status=JudgeResult.COMPILE_ERROR,
+                            score=0,
+                            max_time=0,
+                            max_memory=0,
+                            log='SPJ source not found',
+                            detail=[],
+                        ))
+                    return
+                checker_exe = SPJ_DIR / self.spj_id / 'checker'
+                if checker_exe.exists():
+                    shutil.copyfile(checker_exe, working_dir / 'checker')
+                else:
+                    shutil.copyfile(checker, working_dir / 'checker.cpp')
+                    shutil.copyfile(SPJ_DIR / 'testlib.h',
+                                    working_dir / 'testlib.h')
+                    spj_compile_config = CONFIG.get('spj')['compile']
+                    spj_compile_result, spj_compile_log = Compiler.compile(
+                        working_dir, spj_compile_config)
+                    if spj_compile_result['result'] != judgercore.RESULT_SUCCESS \
+                            and not Path(self.spj_dir / spj_compile_config['exe_name']).exists():
+                        self.result_queue.put(
+                            self.make_report(
+                                status=JudgeResult.COMPILE_ERROR,
+                                score=0,
+                                max_time=spj_compile_result['real_time'],
+                                max_memory=spj_compile_result['memory'],
+                                log=
+                                f'SPJ compile error, info:\n{spj_compile_log}',
+                                detail=[],
+                            ))
+                        return
+                    shutil.copyfile(
+                        working_dir / spj_compile_config['exe_name'],
+                        checker_exe)
+                (working_dir / '.spj.in').write_text('', encoding='utf-8')
             jobs = []
             for case in self.test_case_config:
                 result = self.pool.apply_async(
@@ -151,6 +196,7 @@ class Judger(object):
     def judge_single(self, working_dir, case_name, config, limit_config):
         in_file = self.test_case / f'{case_name}.in'
         out_file = working_dir / f'{case_name}.out'
+        answer_file = self.test_case / f'{case_name}.ans'
         if not in_file.exists():
             return {
                 'test_case': case_name,
@@ -175,8 +221,44 @@ class Judger(object):
                     'output': '',
                     'statistic': run_result
                 }
-            status, result = self.compare_output(case_name, out_file)
-            output = base64.b64encode(result.encode('utf-8'))
+
+            if self.spj_id:
+                shutil.copyfile(answer_file, working_dir / f'{case_name}.ans')
+                spj_out = f'{case_name}.spj.out'
+                spj_run_result = Runner.run(
+                    working_dir,
+                    CONFIG['spj']['compile']['exe_name'],
+                    '.spj.in',
+                    spj_out,
+                    CONFIG['spj']['run'],
+                    limit_config,
+                    {
+                        'in_file_path': str(working_dir / f'{case_name}.in'),
+                        'user_out_file_path': str(
+                            working_dir / f'{case_name}.out'),
+                        'answer_file_path': str(
+                            working_dir / f'{case_name}.ans'),
+                    },
+                )
+                if spj_run_result['exit_code'] == 0:
+                    status, result = JudgeResult.ACCEPTED, ''
+                    output = base64.b64encode(result.encode('utf-8'))
+                elif spj_run_result['exit_code'] == 1:
+                    status = JudgeResult.WRONG_ANSWER
+                    result = (working_dir / f'{case_name}.out').read_text(
+                        encoding='utf-8', errors='Failed to get output!')
+                    output = base64.b64encode(result.encode('utf-8'))
+                else:
+                    status, result = JudgeResult.SYSTEM_ERROR, 'SPJ Error!'
+                    output = 'SPJ error, info: ' + (
+                        working_dir / spj_out).read_text(
+                            encoding='utf-8',
+                            errors='Failed to get SPJ output!')
+                    output = base64.b64encode(output.encode('utf-8'))
+                    run_result = spj_run_result
+            else:
+                status, result = self.compare_output(case_name, out_file)
+                output = base64.b64encode(result.encode('utf-8'))
             return {
                 'test_case': case_name,
                 'status': status,

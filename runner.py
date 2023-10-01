@@ -7,33 +7,48 @@ from config import RUN_USER_UID, RUN_GROUP_GID
 
 
 class Runner(object):
+
     @staticmethod
-    def run(working_path, exe_name, in_name, out_name, run_config, limit_config):
-        command = run_config['command'].format(exe_path=working_path / exe_name)
+    def run(
+        working_path,
+        exe_name,
+        in_name,
+        out_name,
+        run_config,
+        limit_config,
+        spj={},
+    ):
+        command = run_config['command'].format(exe_path=working_path /
+                                               exe_name,
+                                               **spj)
         command = shlex.split(command)
         runner_in = working_path / in_name
         runner_out = working_path / out_name
         log_path = working_path / 'runner.log'
         os.chown(working_path, RUN_USER_UID, RUN_GROUP_GID)
-        env = ['PATH=' + os.environ.get('PATH', '')] + run_config.get('env', [])
+        env = ['PATH=' + os.environ.get('PATH', '')] + run_config.get(
+            'env', [])
         seccomp_rule = run_config['seccomp_rule']
-        run_result = judgercore.run(max_cpu_time=limit_config['max_cpu_time'],
-                                 max_real_time=limit_config['max_cpu_time'] * 3,
-                                 max_memory=limit_config['max_memory'],
-                                 max_stack=128 * 1024 * 1024,
-                                 max_output_size=32 * 1024 * 1024,
-                                 max_process_number=judgercore.UNLIMITED,
-                                 exe_path=command[0],
-                                 input_path=str(runner_in),
-                                 output_path=str(runner_out),
-                                 error_path=str(runner_out),
-                                 args=command[1::],
-                                 env=env,
-                                 log_path=str(log_path),
-                                 seccomp_rule_name=seccomp_rule,
-                                 uid=RUN_USER_UID,
-                                 gid=RUN_GROUP_GID)
+        run_result = judgercore.run(
+            max_cpu_time=limit_config['max_cpu_time'],
+            max_real_time=limit_config['max_cpu_time'] * 3,
+            max_memory=limit_config['max_memory'],
+            max_stack=128 * 1024 * 1024,
+            max_output_size=32 * 1024 * 1024,
+            max_process_number=judgercore.UNLIMITED,
+            exe_path=command[0],
+            input_path=str(runner_in),
+            output_path=str(runner_out),
+            error_path=str(runner_out),
+            args=command[1::],
+            env=env,
+            log_path=str(log_path),
+            seccomp_rule_name=seccomp_rule,
+            uid=RUN_USER_UID,
+            gid=RUN_GROUP_GID)
         return run_result
+
+
 #
 #
 # if __name__ == '__main__':

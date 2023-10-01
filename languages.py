@@ -14,6 +14,28 @@ class JudgeResult(enum.IntEnum):
 
 
 CONFIG = {
+    'spj': {
+        'compile': {
+            'src_name':
+            'checker.cpp',
+            'exe_name':
+            'checker',
+            'max_cpu_time':
+            10000,
+            'max_real_time':
+            20000,
+            'max_memory':
+            1024 * 1024 * 1024,
+            'compile_command':
+            '/usr/bin/g++ -DONLINE_JUDGE -O2 -W -fmax-errors=3 -std=c++14 {src_path} -lm -o {exe_path}',
+        },
+        'run': {
+            'command':
+            '{exe_path} {in_file_path} {user_out_file_path} {answer_file_path}',
+            'seccomp_rule': 'general',  # Should use c_cpp
+            'env': DEFAULT_ENV
+        }
+    },
     'c': {
         'compile': {
             'src_name':
